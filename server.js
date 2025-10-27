@@ -3,7 +3,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
+const Razorpay = require('razorpay'); // <-- ADD razorpay
 const app = express();
 const PORT = 3001; // Port for our backend server
 
@@ -12,6 +12,11 @@ const PORT = 3001; // Port for our backend server
 app.use(cors());
 // Allow the server to understand JSON data from requests
 app.use(express.json());
+// --- Initialize Razorpay ---
+const razorpayInstance = new Razorpay({ // <-- ADD THIS BLOCK
+    key_id: 'rzp_test_RYZ2ymYrZBTuQr', 
+    key_secret: 'MeWE1IufNrsh1qCXPzez1SGN'
+});
 
 // --- Connect to MongoDB ---
 // IMPORTANT: Replace the link below with your own MongoDB Atlas connection string!
@@ -55,6 +60,30 @@ app.post('/api/orders', async (req, res) => {
     } catch (error) {
         console.error('Failed to save order:', error); // This is the error that shows in your terminal
         res.status(500).json({ message: 'Failed to place order.' });
+    }
+});
+// --- API Endpoint to CREATE A RAZORPAY ORDER ---
+app.post('/api/payment/create-order', async (req, res) => { // <-- ADD THIS ENTIRE NEW BLOCK
+    try {
+        const { amount, currency } = req.body; 
+
+        const options = {
+            amount: amount, 
+            currency: currency,
+            receipt: `receipt_order_${new Date().getTime()}`
+        };
+
+        const order = await razorpayInstance.orders.create(options);
+        
+        if (!order) {
+            return res.status(500).send('Error creating Razorpay order');
+        }
+        
+        res.json(order); // Send the order details back to the frontend
+    
+    } catch (error) {
+        console.error('Failed to create Razorpay order:', error);
+       res.status(500).json({ message: 'Failed to create payment order.' });
     }
 });
 
